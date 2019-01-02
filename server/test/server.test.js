@@ -55,7 +55,6 @@ describe('POST /todos', () => {
           done()
         }).catch((err) => done(err))
       })
-
   })
 
 })

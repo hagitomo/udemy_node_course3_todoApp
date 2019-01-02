@@ -12,7 +12,7 @@ app.get('/', (req, res) => {
   res.send('hello')
 })
 
-
+// /todosにデータ送信（POST）時のアクセス
 app.post('/todos', (req, res) => {
   var todo = new Todo({
     text: req.body.text
@@ -20,6 +20,15 @@ app.post('/todos', (req, res) => {
 
   todo.save().then((doc) => {
     res.send(doc)
+  }, (err) => {
+    res.status(400).send(err)
+  })
+})
+
+// /todosに通常アクセス(get) DBのtodoリストを表示
+app.get('/todos', (req, res) => {
+  Todo.find().then((todos) => {
+    res.send({todos})
   }, (err) => {
     res.status(400).send(err)
   })
