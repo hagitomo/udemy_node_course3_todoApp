@@ -52,7 +52,7 @@ app.get('/todos/:id', (req, res) => {
     }
     res.send( {todo} )
   }).catch(( err ) => {
-    res.status(400).send(err)
+    res.status(400).send()
   })
 })
 
