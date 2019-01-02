@@ -112,4 +112,52 @@ describe('POST /todos', () => {
         .end(done)
     })
   })
+
+  // 削除
+  describe('DELETE /todo/:id', () => {
+    // id部分に正しい値が入力された場合
+    it('should remove a todo', (done) => {
+      var hexId = todos[1]._id.toHexString()
+
+      request(app)
+        .delete(`/todos/${hexId}`)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.todo._id).toBeFalsy() // idは削除したため見つからない
+        })
+        .end(( err, res ) => {
+          if (err) {
+            return done(err)
+          }
+
+          // idは削除したため見つからない
+          Todo.findById(hexId).then((todo) => {
+            expect(todo).toBeFalsy()
+            done()
+          }).catch(( err ) => {
+            return done(err)
+          })
+        })
+    })
+
+    // id部分に形式は正しいが、存在しないidが入力された場合
+    it('should return 404 if todo not found', (done) => {
+      var hexId = new ObjectID().toHexString()
+      request(app)
+        .delete(`/todos/${hexId}`)
+        .expect(404)
+        .end(done)
+    })
+
+    // id部分に不正な形式が入力された場合
+    it('should return 404 from non-object ids', (done) => {
+      var invalidId = '123abc'
+      request(app)
+        .delete(`/todos/${todos[0]}`)
+        .expect(404)
+        .end(done)
+    })
+
+
+  })
 })
