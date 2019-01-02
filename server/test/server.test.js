@@ -4,11 +4,19 @@ const request = require('supertest')
 const { app } = require('./../server.js')
 const { Todo } = require('./../models/todo.js')
 
-// test開始前にデータ・ベースを空にする
+
+const Todos = [{
+  text: 'First test todo'
+}, {
+  text: 'Second test todo'
+}]
+
+
+// test開始前にデータ・ベースを空にし、データ入力
 beforeEach((done) => {
   Todo.remove({}).then(() => {
-    done()
-  })
+    return Todo.insertMany(Todos)
+  }).then(() => done())
 })
 
 describe('POST /todos', () => {
@@ -31,7 +39,7 @@ describe('POST /todos', () => {
         }
 
         // DBに保存されている値が正しいかのtest
-        Todo.find().then((todos) => {
+        Todo.find({text}).then((todos) => {
           expect(todos.length).toBe(1)
           expect(todos[0].text).toBe(text)
           done()
@@ -51,10 +59,23 @@ describe('POST /todos', () => {
         }
         Todo.find().then((todos) => {
           // DBに保存されていないか
-          expect(todos.length).toBe(0)
+          expect(todos.length).toBe(2)
           done()
         }).catch((err) => done(err))
       })
+  })
+
+  // todo一覧取得
+  describe('GET /todos', () => {
+    it('should get all todos', (done) => {
+      request(app)
+        .get('/todos')
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.todos.length).toBe(2)
+        })
+        .end(done)
+    })
   })
 
 })
