@@ -44,17 +44,38 @@ app.get('/todos/:id', (req, res) => {
 
   // idの部分がidの形式にあっていない場合
   if( !ObjectID.isValid(id) ) {
-    res.status(404).send()
+    return res.status(404).send()
   }
 
   Todo.findById(id).then(( todo ) => {
     // 該当するデータがない場合
     if ( !todo ) {
-      res.status(404).send()
+      return res.status(404).send()
     }
     res.send( {todo} )
   }).catch(( err ) => {
     res.status(400).send()
+  })
+})
+
+// todosから削除
+app.delete('/todos/:id', (req, res) => {
+  var id = req.params.id
+
+  // idの形式が正しくない
+  if ( !ObjectID.isValid(id) ) {
+    return res.status(404).send()
+  }
+
+  Todo.findByIdAndRemove(id,{rawResult: true}).then(( todo ) => {
+    // idに該当するデータがない
+    if ( !todo ) {
+      return res.status(404).send()
+    }
+
+    res.send(todo)
+  }).catch(( err ) => {
+    return res.status(400).send()
   })
 })
 
