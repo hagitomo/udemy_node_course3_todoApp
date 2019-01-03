@@ -39,6 +39,7 @@ UserSchema.methods.toJSON = function() {
 
   return _.pick(userObject, ['_id', 'email'])
 }
+
 // 作製したSchemaに `generateAuthTokenメソッド` を登録する
 UserSchema.methods.generateAuthToken = function() {
   var user = this
@@ -52,6 +53,27 @@ UserSchema.methods.generateAuthToken = function() {
   // dbに保存して、tokenを返す
   return user.save().then(() => {
     return token
+  })
+}
+
+// tokenから、一致するユーザーを見つける
+UserSchema.statics.findByToken = function( token ) {
+  var User = this
+  var decoded;
+
+  // tokenがあれば、tokenから情報を復元
+  try {
+    decoded = jwt.verify(token, 'abc123')
+  } catch( err ) {
+    return Promise.reject()
+  }
+
+
+  // 復元された情報に一致するユーザーを返す　
+  return User.findOne({
+    '_id': decoded._id,
+    'tokens.token': token,
+    'tokens.access': 'auth'
   })
 }
 
