@@ -19,7 +19,7 @@ app.get('/', (req, res) => {
   res.send('hello')
 })
 
-// /todosにデータ送信（POST）時のアクセス
+// todoリストにデータ送信（POST）時のアクセス
 app.post('/todos', (req, res) => {
   var todo = new Todo({
     text: req.body.text
@@ -32,7 +32,7 @@ app.post('/todos', (req, res) => {
   })
 })
 
-// /todosに通常アクセス(get) DBのtodoリストを表示
+// todoリストに通常アクセス(get) DBのtodoリストを表示
 app.get('/todos', (req, res) => {
   Todo.find().then((todos) => {
     res.send({todos})
@@ -41,7 +41,7 @@ app.get('/todos', (req, res) => {
   })
 })
 
-// /todosにパラメータ付きでアクセス
+// todoリストににパラメータ付きでアクセス
 app.get('/todos/:id', (req, res) => {
   var id = req.params.id
 
@@ -61,7 +61,7 @@ app.get('/todos/:id', (req, res) => {
   })
 })
 
-// todosから削除
+// todoリストから削除
 app.delete('/todos/:id', (req, res) => {
   var id = req.params.id
 
@@ -83,7 +83,7 @@ app.delete('/todos/:id', (req, res) => {
 })
 
 
-// 更新
+// todoリストを更新
 app.patch('/todos/:id', (req, res) => {
   var id = req.params.id
   var body = _.pick(req.body, ['text', `completed`]) // 更新するプロパティをオブジェクトで取得
@@ -118,6 +118,23 @@ app.patch('/todos/:id', (req, res) => {
   })
 })
 
+// user登録
+app.post('/users', (req, res) => {
+  var body = _.pick(req.body, ['email', 'password'])
+  var user = new User(body)
+
+  user.save().then(() => {
+    // ユーザー情報を保存後、tokenを発行し、それを返す
+    return user.generateAuthToken()
+
+  }).then((token) => {
+    // headerの`x-auth`にtoken情報をつけて返却する
+    res.header('x-auth', token).send(user)
+
+  }).catch((err) => {
+    res.status(400).send(err)
+  })
+})
 
 app.listen(port, () => {
   console.log(`Started on port ${port} ........`)
