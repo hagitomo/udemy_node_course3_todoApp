@@ -11,7 +11,9 @@ const todos = [{
   text: 'First test todo' // テスト用テキスト
 }, {
   _id: new ObjectID(),
-  text: 'Second test todo'
+  text: 'Second test todo',
+  completed: true,
+  completedAt: 333
 }]
 
 
@@ -157,7 +159,48 @@ describe('POST /todos', () => {
         .expect(404)
         .end(done)
     })
+  })
 
+  // 更新
+  describe('PATCH /todos/:id', () => {
+    // 更新が成功
+    it('should update the todo', (done) => {
+      var hexId = todos[0]._id.toHexString()
+      var update = {
+        "completed": true,
+        "text": "udemy lessen"
+      }
 
+      request(app)
+        .patch(`/todos/${hexId}`)
+        .send(update)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.todo.text).toBe(update.text)
+          expect(res.body.todo.completed).toBe(true)
+          expect(typeof res.body.todo.completedAt).toBe('number')
+        })
+        .end(done)
+    })
+
+    // completedがfalseの場合、completedAtの値がクリアされる
+    it('should clear completedAt when todo is not completed', (done) => {
+      var hexId = todos[1]._id.toHexString()
+      var update = {
+        "completed": false,
+        "text": "new udemy lessen"
+      }
+
+      request(app)
+        .patch(`/todos/${hexId}`)
+        .send(update)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.todo.text).toBe(update.text)
+          expect(res.body.todo.completed).toBe(false)
+          expect(res.body.todo.completedAt).toBeNull()
+        })
+        .end(done)
+    })
   })
 })
