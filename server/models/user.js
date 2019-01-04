@@ -2,6 +2,7 @@ const { mongoose } = require('../db/mongoose.js')
 const validator = require('validator') // バリデータ ライブラリ
 const jwt = require('jsonwebtoken')
 const _ = require('lodash')
+const bcrypt = require('bcryptjs')
 
 // schema作成
 const UserSchema = new mongoose.Schema({
@@ -68,14 +69,31 @@ UserSchema.statics.findByToken = function( token ) {
     return Promise.reject()
   }
 
-
-  // 復元された情報に一致するユーザーを返す　
+  // 復元された情報に一致するユーザーを返す
   return User.findOne({
     '_id': decoded._id,
     'tokens.token': token,
     'tokens.access': 'auth'
   })
 }
+
+// hash化して passwordを保存
+UserSchema.pre('save', function (next) {
+  var user = this
+
+  // passwprdが変更された場合
+  if (user.isModified('password')) {
+    bcrypt.genSalt(10, (err, salt) => {
+      bcrypt.hash(user.password, salt, (err, hash) => {
+        // hash化したものを保存
+        user.password = hash
+        next()
+      })
+    })
+  } else {
+    next()
+  }
+})
 
 // データベース`User`を定義
 var User = mongoose.model('User', UserSchema)
