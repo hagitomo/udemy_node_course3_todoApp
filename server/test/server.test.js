@@ -4,70 +4,62 @@ const { ObjectID } = require('mongodb')
 
 const { app } = require('./../server.js')
 const { Todo } = require('./../models/todo.js')
+const { User } = require('./../models/user.js')
 
-// テスト用データ
-const todos = [{
-  _id: new ObjectID(), // id作成
-  text: 'First test todo' // テスト用テキスト
-}, {
-  _id: new ObjectID(),
-  text: 'Second test todo',
-  completed: true,
-  completedAt: 333
-}]
+const { users, todos, populateTodos, populateUsers } = require('./seed/seed.js')
 
 
 // test開始前にデータ・ベースを空にし、データ入力
-beforeEach((done) => {
-  Todo.remove({}).then(() => {
-    return Todo.insertMany(todos)
-  }).then(() => done())
-})
+beforeEach(populateUsers)
+beforeEach(populateTodos)
 
-describe('POST /todos', () => {
-  // 入力テスト(正常な値が入力)
-  it('should create a new todo', (done) => {
-    var text = 'Text todo text'
+describe('test', () => {
+  // todos 入力テスト
+  describe('GET /todos', () => {
+    // 正常な値が入力
+    it('should create a new todo', (done) => {
+      var text = 'Text todo text'
 
-    request(app)
-      .post('/todos')
-      .send({text})
-      .expect(200)
-      .expect((res) => {
-        // server.jsで、todoを保存したら、内容を返すようにしている。それが入力値と一致しているか
-        expect(res.body.text).toBe(text)
-      })
-      .end((err, res) => {
-        // 一致していなかった場合
-        if (err) {
-          return done(err)
-        }
+      request(app)
+        .post('/todos')
+        .send({text})
+        .expect(200)
+        .expect((res) => {
+          // server.jsで、todoを保存したら、内容を返すようにしている。それが入力値と一致しているか
+          expect(res.body.text).toBe(text)
+        })
+        .end((err, res) => {
+          // 一致していなかった場合
+          if (err) {
+            return done(err)
+          }
 
-        // DBに保存されている値が正しいかのtest
-        Todo.find({text}).then((todos) => {
-          expect(todos.length).toBe(1)
-          expect(todos[0].text).toBe(text)
-          done()
-        }).catch((err) => done(err))
-      })
-  })
+          // DBに保存されている値が正しいかのtest
+          Todo.find({text}).then((todos) => {
+            expect(todos.length).toBe(1)
+            expect(todos[0].text).toBe(text)
+            done()
+          }).catch((err) => done(err))
+        })
+    })
 
-  // 不正な値が入力された場合のtest
-  it('should not create todo with invalid body data', (done) => {
-    request(app)
-      .post('/todos')
-      .send({})
-      .expect(400)
-      .end((err, res) => {
-        if( err ) {
-          return done(err)
-        }
-        Todo.find().then((todos) => {
-          // DBに保存されていないか
-          expect(todos.length).toBe(2)
-          done()
-        }).catch((err) => done(err))
-      })
+    // 不正な値が入力された場合のtest
+    it('should not create todo with invalid body data', (done) => {
+      request(app)
+        .post('/todos')
+        .send({})
+        .expect(400)
+        .end((err, res) => {
+          if( err ) {
+            return done(err)
+          }
+          Todo.find().then((todos) => {
+            // DBに保存されていないか
+            expect(todos.length).toBe(2)
+            done()
+          }).catch((err) => done(err))
+        })
+    })
   })
 
   // todo一覧取得
@@ -200,6 +192,91 @@ describe('POST /todos', () => {
           expect(res.body.todo.completed).toBe(false)
           expect(res.body.todo.completedAt).toBeNull()
         })
+        .end(done)
+    })
+  })
+
+  // ユーザーページにアクセスした場合
+  describe('GET /users/me', () => {
+    // すでにユーザーが認証されている
+    it('should return user if authenticated', (done) => {
+      request(app)
+        .get('/users/me')
+        .set('x-auth', users[0].tokens[0].token)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body._id).toBe(users[0]._id.toHexString())
+          expect(res.body.email).toBe(users[0].email)
+        })
+        .end(done)
+    })
+
+    // 認証されていない
+    it('should return 401 if not authenticated', (done) => {
+      request(app)
+        .get('/users/me')
+        .expect(401)
+        .expect((res) => {
+          expect(res.body).toEqual({})
+        })
+        .end(done)
+    })
+  })
+
+  // ユーザー登録
+  describe('POST /users', () => {
+    // 登録成功
+    it('should create a user', (done) => {
+      var email = "jiajijid@jadsjncs.com"
+      var password = "knvojknsfnv!!"
+
+      request(app)
+        .post('/users')
+        .send({email, password})
+        .expect(200)
+        .expect((res) => {
+          expect(res.headers['x-auth']).toBeTruthy() // headerにx-authが付加されているか
+          expect(res.body._id).toBeTruthy() // idが存在するか
+          expect(res.body.email).toBe(email) // emailが存在するか
+        })
+        .end(( err ) => {
+          if ( err ) {
+            return done(err)
+          }
+
+          // dbに登録されているか
+          User.findOne({email}).then(( user ) => {
+            expect(user).toBeTruthy() // ユーザーが存在するか
+            expect(user.password).not.toBe(password) // パスワードがhash化され、登録時と違う
+            done()
+          })
+        })
+    })
+
+    // 登録時の情報が正しくない
+    it('should return validation errors if request invalid', (done) => {
+      var email = "jiajijid@jadsjncs"
+      var password = "knvo"
+
+      request(app)
+        .post('/users')
+        .send({email, password})
+        .expect(400)
+        .end(done)
+    })
+
+    // 登録されたemailがすでに使用されている
+    it('should not create user if email in use', (done) => {
+      var email = "jiajijid@jadsjncs.com"
+      var password = "knvojknsfnv!!"
+
+      request(app)
+        .post('/users')
+        .send({
+          email: users[0].email,
+          password: 'knvojknsfnv!!'
+        })
+        .expect(400)
         .end(done)
     })
   })
