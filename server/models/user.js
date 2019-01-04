@@ -57,6 +57,18 @@ UserSchema.methods.generateAuthToken = function() {
   })
 }
 
+// tokenを削除する
+UserSchema.methods.removeToken = function(token) {
+  var user = this
+
+  // 渡されたtokenと等しいtokenを持つユーザーを削除
+  return user.update({
+    $pull: {
+      tokens: {token}
+    }
+  })
+}
+
 // tokenから、一致するユーザーを見つける
 UserSchema.statics.findByToken = function( token ) {
   var User = this
