@@ -77,6 +77,30 @@ UserSchema.statics.findByToken = function( token ) {
   })
 }
 
+// emailとpasswordからlogin判定
+UserSchema.statics.findByCredentials = function (email, password) {
+  var User = this
+
+  // emailが一致するユーザーを探す
+  return User.findOne({email}).then((user) => {
+    // ユーザーが存在しない
+    if (!user) {
+      return Promise.reject()
+    }
+
+    return new Promise((resolve, reject) => {
+      // 入力されたpassとdb登録のpassを比較
+      bcrypt.compare(password, user.password, (req, res) => {
+        if (res) {
+          resolve(user)
+        } else {
+          reject()
+        }
+      })
+    })
+  })
+}
+
 // hash化して passwordを保存
 UserSchema.pre('save', function (next) {
   var user = this

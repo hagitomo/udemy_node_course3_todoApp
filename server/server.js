@@ -10,6 +10,7 @@ const { ObjectID } = require('mongodb')
 const { Todo } = require('./models/todo.js')
 const { User } = require('./models/user.js')
 const { authenticate } = require('./middlewear/authenticate.js')
+const bcrypt = require('bcryptjs')
 
 const app = express()
 const port = process.env.PORT // herokuであれば環境変数使用、localでは3000
@@ -140,6 +141,21 @@ app.post('/users', (req, res) => {
 // user マイページ
 app.get('/users/me', authenticate, (req, res) => {
   res.send(req.user)
+})
+
+// user ログイン
+app.post('/users/login', (req, res) => {
+  var body = _.pick(req.body, ['email', 'password'])
+
+  // emailとpasswordから認証判定
+  User.findByCredentials(body.email, body.password).then((user) => {
+    // 認証が成功した場合、tokenを再発行し、headerに付加
+    return user.generateAuthToken().then((token) => {
+      res.header('x-auth', token).send(user)
+    })
+  }).catch((err) => {
+    res.status(400).send()
+  })
 })
 
 app.listen(port, () => {
