@@ -46,7 +46,7 @@ UserSchema.methods.generateAuthToken = function() {
   var user = this
   var access = 'auth'
   // `id`, `アクセス権`を暗号化したtoken発行
-  var token = jwt.sign({_id: user._id.toHexString(), access}, 'abc123').toString()
+  var token = jwt.sign({_id: user._id.toHexString(), access}, process.env.JWT_SECRET).toString()
 
   // アクセス権とtokenをもつ配列作成
   user.tokens = user.tokens.concat([{ access, token} ])
@@ -76,7 +76,7 @@ UserSchema.statics.findByToken = function( token ) {
 
   // tokenがあれば、tokenから情報を復元
   try {
-    decoded = jwt.verify(token, 'abc123')
+    decoded = jwt.verify(token, process.env.JWT_SECRET)
   } catch( err ) {
     return Promise.reject()
   }
