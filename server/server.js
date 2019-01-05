@@ -22,9 +22,10 @@ app.get('/', (req, res) => {
 })
 
 // todoリストにデータ送信（POST）時のアクセス
-app.post('/todos', (req, res) => {
+app.post('/todos',authenticate, (req, res) => {
   var todo = new Todo({
-    text: req.body.text
+    text: req.body.text,
+    _creator: req.user._id
   })
 
   todo.save().then((doc) => {
@@ -35,8 +36,10 @@ app.post('/todos', (req, res) => {
 })
 
 // todoリストに通常アクセス(get) DBのtodoリストを表示
-app.get('/todos', (req, res) => {
-  Todo.find().then((todos) => {
+app.get('/todos', authenticate, (req, res) => {
+  Todo.find({
+    _creator: req.user._id
+  }).then((todos) => {
     res.send({todos})
   }, (err) => {
     res.status(400).send(err)
@@ -44,7 +47,7 @@ app.get('/todos', (req, res) => {
 })
 
 // todoリストににパラメータ付きでアクセス
-app.get('/todos/:id', (req, res) => {
+app.get('/todos/:id', authenticate, (req, res) => {
   var id = req.params.id
 
   // idの部分がidの形式にあっていない場合
@@ -52,7 +55,11 @@ app.get('/todos/:id', (req, res) => {
     return res.status(404).send()
   }
 
-  Todo.findById(id).then(( todo ) => {
+  Todo.findOne({
+      _id: id,
+      _creator: req.user._id
+    })
+    .then(( todo ) => {
     // 該当するデータがない場合
     if ( !todo ) {
       return res.status(404).send()
@@ -64,7 +71,7 @@ app.get('/todos/:id', (req, res) => {
 })
 
 // todoリストから削除
-app.delete('/todos/:id', (req, res) => {
+app.delete('/todos/:id', authenticate, (req, res) => {
   var id = req.params.id
 
   // idの形式が正しくない
@@ -72,7 +79,11 @@ app.delete('/todos/:id', (req, res) => {
     return res.status(404).send()
   }
 
-  Todo.findByIdAndRemove(id,{rawResult: true}).then(( todo ) => {
+  // idと作成者が一致
+  Todo.findOneAndRemove(
+    { _id: id, _creator: req.user._id },
+    { rawResult: true }
+    ).then(( todo ) => {
     // idに該当するデータがない
     if ( !todo ) {
       return res.status(404).send()
@@ -86,7 +97,7 @@ app.delete('/todos/:id', (req, res) => {
 
 
 // todoリストを更新
-app.patch('/todos/:id', (req, res) => {
+app.patch('/todos/:id', authenticate, (req, res) => {
   var id = req.params.id
   var body = _.pick(req.body, ['text', `completed`]) // 更新するプロパティをオブジェクトで取得
 
@@ -105,8 +116,10 @@ app.patch('/todos/:id', (req, res) => {
     body.completedAt = null
   }
 
-  Todo.findByIdAndUpdate(
-    id, // 更新するid
+  Todo.findOneAndUpdate({
+      _id: id,
+      _creator: req.user._id
+    },
     { $set: body }, // 更新する値
     { new: true } // 更新後の結果を返す
   ).then((todo) => {

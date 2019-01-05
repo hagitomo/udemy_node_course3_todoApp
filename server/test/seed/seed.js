@@ -18,18 +18,24 @@ const users = [{
 },{
   _id: userTwoId,
   email: 'piyo@piyo.com',
-  password: 'userTwoPass'
+  password: 'userTwoPass',
+  tokens: [{
+    access: 'auth',
+    token: jwt.sign({_id: userTwoId, acess: 'auth'}, 'abc123').toString()
+  }]
 }]
 
 // テスト用データ
 const todos = [{
   _id: new ObjectID(), // id作成
-  text: 'First test todo' // テスト用テキスト
+  text: 'First test todo', // テスト用テキスト
+  _creator: userOneId
 }, {
   _id: new ObjectID(),
   text: 'Second test todo',
   completed: true,
-  completedAt: 333
+  completedAt: 333,
+  _creator: userTwoId
 }]
 
 

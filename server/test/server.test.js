@@ -21,6 +21,7 @@ describe('GET /todos', () => {
 
     request(app)
       .post('/todos')
+      .set('x-auth', users[0].tokens[0].token)
       .send({text})
       .expect(200)
       .expect((res) => {
@@ -46,6 +47,7 @@ describe('GET /todos', () => {
   it('should not create todo with invalid body data', (done) => {
     request(app)
       .post('/todos')
+      .set('x-auth', users[0].tokens[0].token)
       .send({})
       .expect(400)
       .end((err, res) => {
@@ -66,9 +68,10 @@ describe('GET /todos', () => {
   it('should get all todos', (done) => {
     request(app)
       .get('/todos')
+      .set('x-auth', users[0].tokens[0].token)
       .expect(200)
       .expect((res) => {
-        expect(res.body.todos.length).toBe(2)
+        expect(res.body.todos.length).toBe(1)
       })
       .end(done)
   })
@@ -80,10 +83,20 @@ describe('GET /todos/:id', () => {
   it('should return todo doc', (done) => {
     request(app)
       .get(`/todos/${todos[0]._id.toHexString()}`) // idをテスト用データから取得し、16進数表記の文字列に変換
+      .set('x-auth', users[0].tokens[0].token)
       .expect(200)
       .expect((res) => {
         expect(res.body.todo.text).toBe(todos[0].text) // 返ってきた値が、テスト用データと等しいか
       })
+      .end(done)
+  })
+
+  // 異なるuser のtodoがリクエストされた場合
+  it('should return todo doc created by other user', (done) => {
+    request(app)
+      .get(`/todos/${todos[1]._id.toHexString()}`) // idをテスト用データから取得し、16進数表記の文字列に変換
+      .set('x-auth', users[0].tokens[0].token)
+      .expect(404)
       .end(done)
   })
 
@@ -92,6 +105,7 @@ describe('GET /todos/:id', () => {
     var hexId = new ObjectID().toHexString() // 新しいIDを作成
     request(app)
       .get(`/todos/${hexId}`)
+      .set('x-auth', users[0].tokens[0].token)
       .expect(404)
       .end(done)
   })
@@ -101,6 +115,7 @@ describe('GET /todos/:id', () => {
     var invalidId = '123abc';
     request(app)
       .get(`/todos/${invalidId}`)
+      .set('x-auth', users[0].tokens[0].token)
       .expect(404)
       .end(done)
   })
@@ -114,6 +129,7 @@ describe('DELETE /todo/:id', () => {
 
     request(app)
       .delete(`/todos/${hexId}`)
+      .set('x-auth', users[1].tokens[0].token)
       .expect(200)
       .expect((res) => {
         expect(res.body.todo._id).toBeFalsy() // idは削除したため見つからない
@@ -133,11 +149,35 @@ describe('DELETE /todo/:id', () => {
       })
   })
 
-  // id部分に形式は正しいが、存在しないidが入力された場合
-  it('should return 404 if todo not found', (done) => {
-    var hexId = new ObjectID().toHexString()
+  // id部分に形式は正しいが、認証が異なるためエラー
+  it('should return 404 if token is differnt', (done) => {
+    var hexId = todos[0]._id.toHexString()
+
     request(app)
       .delete(`/todos/${hexId}`)
+      .set('x-auth', users[1].tokens[0].token)
+      .expect(404)
+      .end(( err, res ) => {
+        if (err) {
+          return done(err)
+        }
+
+        // テストしたidのデータは存在する
+        Todo.findById(hexId).then((todo) => {
+          expect(todo).toBeTruthy()
+          done()
+        }).catch(( err ) => {
+          return done(err)
+        })
+      })
+  })
+
+  // id部分に形式は正しいが、存在しないidが入力された場合
+  it('should return 404 if todo not found', (done) => {
+    var hexId = todos[0]._id.toHexString()
+    request(app)
+      .delete(`/todos/${hexId}`)
+      .set('x-auth', users[1].tokens[0].token)
       .expect(404)
       .end(done)
   })
@@ -147,6 +187,7 @@ describe('DELETE /todo/:id', () => {
     var invalidId = '123abc'
     request(app)
       .delete(`/todos/${todos[0]}`)
+      .set('x-auth', users[1].tokens[0].token)
       .expect(404)
       .end(done)
   })
@@ -164,6 +205,7 @@ describe('PATCH /todos/:id', () => {
 
     request(app)
       .patch(`/todos/${hexId}`)
+      .set('x-auth', users[0].tokens[0].token)
       .send(update)
       .expect(200)
       .expect((res) => {
@@ -172,6 +214,34 @@ describe('PATCH /todos/:id', () => {
         expect(typeof res.body.todo.completedAt).toBe('number')
       })
       .end(done)
+  })
+
+  // 作成時のtokenと、更新をかけたtokenが異なるため更新が失敗
+  it('should return 400 if token is differnt', (done) => {
+    var hexId = todos[0]._id.toHexString()
+    var update = {
+      "completed": true,
+      "text": "udemy lessen"
+    }
+
+    request(app)
+      .patch(`/todos/${hexId}`)
+      .set('x-auth', users[1].tokens[0].token)
+      .send(update)
+      .expect(404)
+      .end(( err, res ) => {
+        if (err) {
+          return done(err)
+        }
+
+        // テストしたidのデータは存在する
+        Todo.findById(hexId).then((todo) => {
+          expect(todo).toBeTruthy()
+          done()
+        }).catch(( err ) => {
+          return done(err)
+        })
+      })
   })
 
   // completedがfalseの場合、completedAtの値がクリアされる
@@ -184,6 +254,7 @@ describe('PATCH /todos/:id', () => {
 
     request(app)
       .patch(`/todos/${hexId}`)
+      .set('x-auth', users[1].tokens[0].token)
       .send(update)
       .expect(200)
       .expect((res) => {
@@ -301,7 +372,7 @@ describe('POST /users/login', () => {
 
         // db上のユーザー登録されているtokenが、返却されたheaderのものを含むか
         User.findById(users[1]._id).then((user) => {
-          expect(user.tokens[0]).toMatchObject({
+          expect(user.tokens[1]).toMatchObject({
             access: 'auth',
             token: res.headers['x-auth']
           })
@@ -328,9 +399,9 @@ describe('POST /users/login', () => {
           return done(err)
         }
 
-        // db上のユーザー登録されているtokenが存在しない
+        // db上のユーザー登録されているtokenが存在
         User.findById([users[1]._id]).then((user) => {
-          expect(user.tokens.length).toBe(0)
+          expect(user.tokens.length).toBe(1)
           done()
         }).catch((err) => {
           return done(err)
