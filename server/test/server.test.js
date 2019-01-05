@@ -392,7 +392,7 @@ describe('POST /users/login', () => {
       })
       .expect(400)
       .expect((res) => {
-        expect(res.headers['x-auth']).not.toBeTruthy()
+        expect(res.headers['x-auth']).toBeFalsy()
       })
       .end(( err, res ) => {
         if ( err ) {
